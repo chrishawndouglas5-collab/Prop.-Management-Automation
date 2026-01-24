@@ -1,0 +1,65 @@
+
+> prop-mgmt-app@0.1.0 build
+> next build
+
+▲ Next.js 16.1.4 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Error: Can't resolve 'tailwindcss-animate' in 'C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\app'
+    [2m[at finishWithoutResolve (C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:565:18)][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:657:14][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m {
+  details: "resolve 'tailwindcss-animate' in 'C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\package.json (relative path: ./app)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\app\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\package.json (relative path: ./node_modules/tailwindcss-animate)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    '            .js\n' +
+    "              C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate.js doesn't exist\n" +
+    '            .json\n' +
+    "              C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate.json doesn't exist\n" +
+    '            .node\n' +
+    "              C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate.node doesn't exist\n" +
+    '            .ts\n' +
+    "              C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate.ts doesn't exist\n" +
+    "        C:\\Users\\Jabar\\OneDrive\\Projects\\Prop Management Automation\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    "      C:\\Users\\Jabar\\OneDrive\\Projects\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Jabar\\OneDrive\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Jabar\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\app\globals.css:1:1: Can't resolve 'tailwindcss-animate' in 'C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\app'
+    at Input.error (node_modules/postcss/lib/input.js:135:16) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\node_modules_fe693df6._.js:4651:22]
+    at Root.error (node_modules/postcss/lib/node.js:146:32) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\node_modules_fe693df6._.js:928:38]
+    [at Object.Once (C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\node_modules\@tailwindcss\postcss\dist\index.js:10:6911)]
+    at async LazyResult.runAsync (node_modules/postcss/lib/lazy-result.js:293:11) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\node_modules_fe693df6._.js:6206:21]
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\[root-of-the-server]__51225daf._.js:146:36]
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\[root-of-the-server]__974941ed._.js:443:31]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\[root-of-the-server]__51225daf._.js:146:36])
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Jabar\OneDrive\Projects\Prop Management Automation\.next\build\chunks\[root-of-the-server]__974941ed._.js:443:31])
