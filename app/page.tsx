@@ -127,20 +127,6 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-
-      <footer className="py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-white/10 bg-zinc-950">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-zinc-500">© 2026 Abas Solutions. All rights reserved.</p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link className="text-xs hover:underline underline-offset-4 text-zinc-400 hover:text-white" href="/terms">
-              Terms of Service
-            </Link>
-            <Link className="text-xs hover:underline underline-offset-4 text-zinc-400 hover:text-white" href="/privacy">
-              Privacy
-            </Link>
-          </nav>
-        </div>
-      </footer>
     </div>
   );
 }
