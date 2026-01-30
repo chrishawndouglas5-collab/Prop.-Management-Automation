@@ -130,19 +130,45 @@ export async function generatePropertyReport({
 
     // 6. Save report record
     // Upsert ensures that if a user regenerates a report for the same period, we update the existing record
-    const { error: saveError } = await supabase.from('reports').upsert({
-        customer_id: customerId,
-        property_id: propertyId,
-        report_month: month,
-        report_year: year,
-        pdf_url: publicUrl,
-        storage_path: filename,
-        generated_at: new Date().toISOString(),
-        status: 'generated',
-    } as any, {
-        onConflict: 'customer_id, property_id, report_month, report_year',
-        ignoreDuplicates: false
-    })
+    // 6. Save report record
+    // We manually check for existence to avoid "ON CONFLICT" errors if the unique constraint is missing
+    const { data: existingReport } = await supabase
+        .from('reports')
+        .select('id')
+        .eq('customer_id', customerId)
+        .eq('property_id', propertyId)
+        .eq('report_month', month)
+        .eq('report_year', year)
+        .maybeSingle() as any
+
+    let saveError;
+
+    if (existingReport) {
+        const { error } = await supabase
+            .from('reports')
+            .update({
+                pdf_url: publicUrl,
+                storage_path: filename,
+                generated_at: new Date().toISOString(),
+                status: 'generated'
+            })
+            .eq('id', existingReport.id)
+        saveError = error
+    } else {
+        const { error } = await supabase
+            .from('reports')
+            .insert({
+                customer_id: customerId,
+                property_id: propertyId,
+                report_month: month,
+                report_year: year,
+                pdf_url: publicUrl,
+                storage_path: filename,
+                generated_at: new Date().toISOString(),
+                status: 'generated',
+            })
+        saveError = error
+    }
 
     if (saveError) {
         console.error('Failed to save report record:', saveError)

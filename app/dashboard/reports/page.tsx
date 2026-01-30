@@ -86,12 +86,20 @@ export default function ReportsPage() {
 
         setProperties(propertiesData || [])
 
+        console.log('Load Data: Customer ID:', customer.id)
+
         // Load existing reports
-        const { data: reportsData } = await supabase
+        const { data: reportsData, error: reportsError } = await supabase
             .from('reports')
             .select('id, property_id, report_month, report_year, pdf_url, generated_at, status')
             .eq('customer_id', customer.id)
-            .order('generated_at', { ascending: false })
+            .order('generated_at', { ascending: false }) as any
+
+        if (reportsError) {
+            console.error('Error loading reports:', reportsError)
+        } else {
+            console.log('Loaded Reports:', reportsData)
+        }
 
         // Join with property names
         const reportsWithNames = reportsData?.map((report) => {
@@ -102,6 +110,7 @@ export default function ReportsPage() {
             }
         })
 
+        console.log('State Reports:', reportsWithNames)
         setReports(reportsWithNames || [])
 
         // Auto-detect month with data
@@ -117,7 +126,7 @@ export default function ReportsPage() {
             .eq('customer_id', customerId)
             .order('transaction_date', { ascending: false })
             .limit(1)
-            .single()
+            .single() as any
 
         if (recentTransaction) {
             const date = new Date(recentTransaction.transaction_date)
@@ -178,6 +187,7 @@ export default function ReportsPage() {
         setResults(resultsArray)
         setGenerating(false)
 
+        console.log('Generation Complete. Reloading data...')
         // Reload reports list to show newly generated reports
         await loadData()
     }
@@ -283,8 +293,8 @@ export default function ReportsPage() {
                                 <div
                                     key={i}
                                     className={`p-3 rounded border text-sm ${result.status === 'success'
-                                            ? 'bg-green-50 border-green-200'
-                                            : 'bg-red-50 border-red-200'
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-red-50 border-red-200'
                                         }`}
                                 >
                                     <div className="font-medium">{result.property}</div>
@@ -355,8 +365,8 @@ export default function ReportsPage() {
                                             <TableCell>
                                                 <span
                                                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${report.status === 'generated'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-100 text-gray-800'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-gray-100 text-gray-800'
                                                         }`}
                                                 >
                                                     {report.status}
