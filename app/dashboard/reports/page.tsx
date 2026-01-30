@@ -1,29 +1,47 @@
 'use client'
 
 import React, { useState } from 'react'
-import { FileText, Download, Send, Loader2 } from 'lucide-react'
+import { FileText, Download, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { triggerReportGeneration } from './actions'
-import { createClient } from '@/lib/supabase/client' // Need client for fetching list? Or use server component pattern
-// For simplicity in this step, let's keep it client-focused for trigger, but list should be server fetched.
-// Converting to client component for the trigger form mainly.
+
+// Define local type matching server response
+type ReportResult = {
+    propertyId: string
+    propertyName: string
+    status: 'success' | 'failed' | 'skipped'
+    message?: string
+}
+
+type GenerationResponse = {
+    success: boolean
+    message: string
+    results?: ReportResult[]
+}
 
 export default function ReportsPage() {
     const [month, setMonth] = useState<string>(String(new Date().getMonth() + 1))
     const [year, setYear] = useState<string>(String(new Date().getFullYear()))
     const [generating, setGenerating] = useState(false)
-    const [result, setResult] = useState<{ message: string, success?: boolean } | null>(null)
+
+    // Use GenerationResponse type directly
+    const [result, setResult] = useState<GenerationResponse | null>(null)
 
     async function handleGenerate() {
         setGenerating(true)
+        setResult(null)
         const formData = new FormData()
         formData.append('month', month)
         formData.append('year', year)
 
-        const res = await triggerReportGeneration(null, formData)
-        setResult(res)
+        try {
+            const res = await triggerReportGeneration(null, formData)
+            setResult(res)
+        } catch (e: any) {
+            setResult({ success: false, message: 'Client Error: ' + e.message })
+        }
         setGenerating(false)
     }
 
@@ -76,9 +94,35 @@ export default function ReportsPage() {
                         </div>
 
                         {result && (
-                            <p className={`text-sm ${result.success ? 'text-accent-teal' : 'text-destructive'}`}>
-                                {result.message}
-                            </p>
+                            <div className="space-y-3">
+                                <div className={`p-4 rounded-lg flex items-start gap-3 ${result.success ? 'bg-accent-teal/10 text-accent-teal' : 'bg-destructive/10 text-destructive'}`}>
+                                    {result.success ? <CheckCircle className="h-5 w-5 shrink-0" /> : <Loader2 className="h-5 w-5 shrink-0" />}
+                                    <div>
+                                        <p className="font-medium text-sm">{result.message}</p>
+                                    </div>
+                                </div>
+
+                                {/* Detailed Breakdown */}
+                                {result.results && result.results.length > 0 && (
+                                    <div className="bg-black/20 rounded-lg p-3 space-y-2 border border-white/5 max-h-48 overflow-y-auto">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-semibold">Details</p>
+                                        {result.results.map((r: any) => (
+                                            <div key={r.propertyId} className="flex items-center justify-between text-sm">
+                                                <span className="text-white/80 truncate max-w-[150px]">{r.propertyName}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-xs ${r.status === 'success' ? 'text-accent-teal' :
+                                                            r.status === 'skipped' ? 'text-yellow-500' : 'text-red-400'
+                                                        }`}>
+                                                        {r.message}
+                                                    </span>
+                                                    {r.status === 'success' && <CheckCircle className="h-3 w-3 text-accent-teal" />}
+                                                    {r.status === 'failed' && <AlertCircle className="h-3 w-3 text-red-400" />}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         <Button

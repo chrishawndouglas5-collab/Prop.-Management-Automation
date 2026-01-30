@@ -7,10 +7,11 @@ import {
     TrendingUp,
     Users,
     Plus,
-    ArrowRight
+    ArrowRight,
+    Upload
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -134,26 +135,53 @@ export default async function DashboardPage() {
 
             {/* Recent Activity / Content */}
             <div className="grid gap-8 md:grid-cols-2">
-                <Card className="glass border-white/5 bg-card/20">
+                <Card className="glass border-white/5 bg-card/20 text-center">
                     <CardHeader>
-                        <CardTitle>Recent Properties</CardTitle>
+                        <CardTitle>Getting Started</CardTitle>
+                        <CardDescription>Follow these steps to generate your first report.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex flex-col gap-4">
                         {properties.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/10 rounded-lg bg-black/20">
-                                <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
-                                <h3 className="text-lg font-medium text-foreground">No properties yet</h3>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Add your first property to start generating reports.
-                                </p>
-                                <Link href="/dashboard/properties">
-                                    <Button variant="secondary" size="sm">Add Property</Button>
-                                </Link>
+                            <div className="space-y-6">
+                                <div className="flex flex-col items-center">
+                                    <div className="h-10 w-10 rounded-full bg-brand-DEFAULT flex items-center justify-center mb-2">
+                                        <Building2 className="h-5 w-5 text-white" />
+                                    </div>
+                                    <h3 className="font-semibold text-lg">1. Add Your Property</h3>
+                                    <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-3">
+                                        Create a property profile to track its performance.
+                                    </p>
+                                    <Link href="/dashboard/properties">
+                                        <Button className="bg-brand-DEFAULT w-full sm:w-auto">Add Property</Button>
+                                    </Link>
+                                </div>
+
+                                <div className="w-full h-px bg-white/10" />
+
+                                <div className="flex flex-col items-center opacity-50">
+                                    <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center mb-2 border border-white/10">
+                                        <Upload className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="font-semibold text-lg">2. Upload Data</h3>
+                                    <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                                        Import transactions from AppFolio or Buildium.
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-center opacity-50">
+                                    <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center mb-2 border border-white/10">
+                                        <FileText className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="font-semibold text-lg">3. Generate Report</h3>
+                                    <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                                        Get a professional PDF summary instantly.
+                                    </p>
+                                </div>
                             </div>
                         ) : (
+                            // If has properties but no reports, gently nudge to upload
                             <div className="space-y-4">
                                 {properties.slice(0, 5).map((property) => (
-                                    <div key={property.id} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0 last:pb-0">
+                                    <div key={property.id} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0 last:pb-0 text-left">
                                         <div>
                                             <p className="font-medium text-foreground">{property.property_name}</p>
                                             <p className="text-sm text-muted-foreground">{property.address || 'No address'}</p>
@@ -186,7 +214,27 @@ export default async function DashboardPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {/* Reports list would go here */}
+                                {reports.slice(0, 5).map((report: any) => (
+                                    <div key={report.id} className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0 last:pb-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-accent-purple/10 flex items-center justify-center">
+                                                <FileText className="h-4 w-4 text-accent-purple" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">
+                                                    {new Date(report.report_period).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Report
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Generated {new Date(report.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            {/* Future: Add Download Button */}
+                                            <p className="text-sm font-medium text-brand-glow">View</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>

@@ -1,0 +1,538 @@
+Mission: Fix Critical Production Blockers in PropAuto
+You need to fix three critical issues that are preventing PropAuto from working in production:
+
+RLS Error on CSV Upload (CRITICAL - blocks core functionality)
+Type Safety Issues (HIGH RISK - causes runtime crashes)
+End-to-End Report Generation Test (VERIFICATION - ensure pipeline works)
+
+CRITICAL RULES:
+
+Follow each fix in ORDER (RLS first, then types, then E2E test)
+Test after each fix before moving to next
+Do NOT skip verification steps
+
+
+FIX 1: RESOLVE RLS (Row Level Security) ERROR ON CSV UPLOAD
+Problem Analysis:
+Error: "New row violates row-level security policy for table property_data"
+Root Cause:
+
+The property_data table has RLS enabled but NO insert policy defined
+This defaults to DENY ALL insertions
+The Service Role key that should bypass RLS is either invalid or not being used correctly in production
+
+Solution A: Add Proper RLS Policies (RECOMMENDED)
+Step 1: Add RLS Policies to Supabase
+Go to Supabase Dashboard → SQL Editor and run this SQL:
+sql-- First, verify current RLS status
+SELECT tablename, rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'public' 
+AND tablename = 'property_data';
+
+-- Drop existing policies if any (clean slate)
+DROP POLICY IF EXISTS "Enable insert for authenticated users" ON property_data;
+DROP POLICY IF EXISTS "Enable insert for service role" ON property_data;
+DROP POLICY IF EXISTS "Customers can insert own data" ON property_data;
+
+-- Create new policy: Allow authenticated users to insert their own data
+CREATE POLICY "Customers can insert own property data"
+ON property_data
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  customer_id IN (
+    SELECT id FROM customers WHERE user_id = auth.uid()
+  )
+);
+
+-- Create new policy: Allow users to view their own data
+CREATE POLICY "Customers can view own property data"
+ON property_data
+FOR SELECT
+TO authenticated
+USING (
+  customer_id IN (
+    SELECT id FROM customers WHERE user_id = auth.uid()
+  )
+);
+
+-- Verify policies were created
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
+WHERE tablename = 'property_data';
+Step 2: Update Upload Action to Use Correct Client
+File: app/dashboard/upload/actions.ts
+Find the saveTransactions function and ensure it uses the AUTHENTICATED client, not service role:
+typescript'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+export async function saveTransactions(
+  transactions: Array<{
+    property_id: string
+    transaction_date: string
+    category: string
+    description: string
+    amount: number
+    transaction_type: 'income' | 'expense'
+  }>
+) {
+  // Use the authenticated client (respects RLS policies)
+  const supabase = createClient()
+
+  // Get current user
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Get customer ID for this user
+  const { data: customer, error: customerError } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (customerError || !customer) {
+    throw new Error('Customer not found')
+  }
+
+  // Add customer_id to all transactions
+  const transactionsWithCustomerId = transactions.map((t) => ({
+    ...t,
+    customer_id: customer.id,
+  }))
+
+  // Insert transactions (RLS policy will verify customer_id matches user)
+  const { data, error } = await supabase
+    .from('property_data')
+    .insert(transactionsWithCustomerId)
+    .select()
+
+  if (error) {
+    console.error('Error inserting transactions:', error)
+    throw new Error(`Failed to save transactions: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/upload')
+  return { success: true, count: data.length }
+}
+
+Solution B: Verify Service Role Key (IF SOLUTION A DOESN'T WORK)
+Only do this if Solution A fails.
+Step 1: Verify Environment Variable in Vercel
+
+Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+Check if SUPABASE_SERVICE_ROLE_KEY exists
+Compare the first 10 characters with the key in Supabase Dashboard → Settings → API → service_role key
+If they DON'T match:
+
+Copy the FULL service role key from Supabase
+Update the environment variable in Vercel
+Redeploy the application (IMPORTANT: Not just "promote", do a full git push)
+
+
+
+Step 2: Verify Service Role Client Creation
+File: lib/supabase/admin.ts
+Create this file if it doesn't exist:
+typescriptimport { createClient } from '@supabase/supabase-js'
+
+// Admin client that bypasses RLS
+export const createAdminClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+  if (!supabaseServiceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+Then update upload action to use admin client:
+typescriptimport { createAdminClient } from '@/lib/supabase/admin'
+
+export async function saveTransactions(transactions: any[]) {
+  const adminClient = createAdminClient()
+  
+  // This bypasses RLS completely
+  const { data, error } = await adminClient
+    .from('property_data')
+    .insert(transactions)
+    .select()
+
+  if (error) {
+    console.error('Error inserting transactions:', error)
+    throw new Error(`Failed to save transactions: ${error.message}`)
+  }
+
+  return { success: true, count: data.length }
+}
+
+FIX 2: REMOVE TYPE SAFETY VULNERABILITIES
+Problem: any types and @ts-ignore suppress errors
+File: app/dashboard/billing/actions.ts
+Find and replace:
+typescript// BAD (current code)
+export async function updateSubscription(data: any) {
+  // @ts-ignore
+  const result = await someFunction(data)
+  return result
+}
+
+// GOOD (fixed code)
+interface UpdateSubscriptionInput {
+  customerId: string
+  unitCount: number
+}
+
+export async function updateSubscription(data: UpdateSubscriptionInput) {
+  if (!data.customerId || !data.unitCount) {
+    throw new Error('Missing required fields')
+  }
+  
+  const result = await someFunction(data)
+  return result
+}
+File: app/dashboard/upload/page.tsx
+Find and replace:
+typescript// BAD (current code)
+const handleUpload = async (file: any) => {
+  // @ts-ignore
+  const result = parseCSV(file)
+}
+
+// GOOD (fixed code)
+const handleUpload = async (file: File) => {
+  if (!file || file.type !== 'text/csv') {
+    throw new Error('Invalid file type')
+  }
+  
+  try {
+    const result = await parseCSV(file)
+    return result
+  } catch (error) {
+    console.error('CSV parse error:', error)
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to parse CSV'
+    )
+  }
+}
+Create proper type definitions:
+File: types/transactions.ts (create this file)
+typescriptexport interface Transaction {
+  property_id: string
+  transaction_date: string
+  category: string
+  description: string
+  amount: number
+  transaction_type: 'income' | 'expense'
+}
+
+export interface PropertyData extends Transaction {
+  id?: string
+  customer_id: string
+  created_at?: string
+}
+
+export interface CSVRow {
+  Date?: string
+  Property?: string
+  Category?: string
+  Description?: string
+  Amount?: string
+  Type?: string
+  // AppFolio variations
+  'Transaction Date'?: string
+  'Property Name'?: string
+  'GL Account'?: string
+  // Buildium variations
+  TransactionDate?: string
+  PropertyName?: string
+  Memo?: string
+}
+
+export interface ParsedCSVResult {
+  transactions: Transaction[]
+  errors: string[]
+  unmatchedProperties: Array<{
+    csvPropertyName: string
+    possibleMatches: Array<{ id: string; property_name: string }>
+  }>
+}
+Then update all files to import and use these types:
+typescript// In app/dashboard/upload/actions.ts
+import { Transaction, PropertyData } from '@/types/transactions'
+
+export async function saveTransactions(
+  transactions: Transaction[]
+): Promise<{ success: boolean; count: number }> {
+  // ... implementation
+}
+
+// In lib/csv/parser.ts
+import { CSVRow, ParsedCSVResult } from '@/types/transactions'
+
+export async function parseCSV(file: File): Promise<ParsedCSVResult> {
+  // ... implementation
+}
+
+FIX 3: END-TO-END REPORT GENERATION TEST
+Create Automated Test Script
+File: scripts/test-e2e.ts (create this file)
+typescript/**
+ * End-to-End Test: CSV Upload → Review → Report Generation
+ * 
+ * Run with: npx tsx scripts/test-e2e.ts
+ */
+
+import { createClient } from '@supabase/supabase-js'
+import fs from 'fs'
+import path from 'path'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function testE2E() {
+  console.log('🧪 Starting End-to-End Test...\n')
+
+  // Step 1: Create test customer
+  console.log('📝 Step 1: Creating test customer...')
+  const { data: testUser, error: userError } = await supabase.auth.admin.createUser({
+    email: `test-${Date.now()}@example.com`,
+    password: 'TestPassword123!',
+    email_confirm: true,
+  })
+
+  if (userError) {
+    console.error('❌ Failed to create test user:', userError)
+    return
+  }
+
+  const { data: customer, error: customerError } = await supabase
+    .from('customers')
+    .insert({
+      user_id: testUser.user.id,
+      company_name: 'Test Property Management',
+      unit_count: 50,
+      status: 'active',
+    })
+    .select()
+    .single()
+
+  if (customerError) {
+    console.error('❌ Failed to create customer:', customerError)
+    return
+  }
+
+  console.log('✅ Test customer created:', customer.id)
+
+  // Step 2: Create test property
+  console.log('\n📝 Step 2: Creating test property...')
+  const { data: property, error: propertyError } = await supabase
+    .from('properties')
+    .insert({
+      customer_id: customer.id,
+      property_name: 'Test Apartments',
+      address: '123 Test St',
+      unit_count: 50,
+    })
+    .select()
+    .single()
+
+  if (propertyError) {
+    console.error('❌ Failed to create property:', propertyError)
+    return
+  }
+
+  console.log('✅ Test property created:', property.id)
+
+  // Step 3: Insert test transactions
+  console.log('\n📝 Step 3: Inserting test transactions...')
+  const transactions = [
+    {
+      customer_id: customer.id,
+      property_id: property.id,
+      transaction_date: '2025-01-15',
+      category: 'Rent',
+      description: 'Monthly rent - Unit 101',
+      amount: 1500,
+      transaction_type: 'income' as const,
+    },
+    {
+      customer_id: customer.id,
+      property_id: property.id,
+      transaction_date: '2025-01-20',
+      category: 'Maintenance',
+      description: 'Plumbing repair',
+      amount: 250,
+      transaction_type: 'expense' as const,
+    },
+  ]
+
+  const { data: insertedTransactions, error: transactionError } = await supabase
+    .from('property_data')
+    .insert(transactions)
+    .select()
+
+  if (transactionError) {
+    console.error('❌ Failed to insert transactions:', transactionError)
+    console.error('   This is the RLS error we need to fix!')
+    return
+  }
+
+  console.log('✅ Test transactions inserted:', insertedTransactions.length)
+
+  // Step 4: Generate report
+  console.log('\n📝 Step 4: Testing report generation...')
+  
+  // Import report generator (you'll need to adjust path)
+  // const { generatePropertyReport } = await import('../lib/reports/generator')
+  
+  // For now, just verify data exists
+  const { data: verifyData, error: verifyError } = await supabase
+    .from('property_data')
+    .select('*')
+    .eq('property_id', property.id)
+
+  if (verifyError) {
+    console.error('❌ Failed to verify data:', verifyError)
+    return
+  }
+
+  console.log('✅ Transaction data verified:', verifyData.length, 'rows')
+
+  // Step 5: Cleanup
+  console.log('\n📝 Step 5: Cleaning up test data...')
+  
+  await supabase.from('property_data').delete().eq('property_id', property.id)
+  await supabase.from('properties').delete().eq('id', property.id)
+  await supabase.from('customers').delete().eq('id', customer.id)
+  await supabase.auth.admin.deleteUser(testUser.user.id)
+
+  console.log('✅ Test cleanup complete')
+
+  console.log('\n🎉 END-TO-END TEST PASSED!\n')
+}
+
+testE2E().catch(console.error)
+To run the test:
+bashnpm install -D tsx
+npx tsx scripts/test-e2e.ts
+If the test FAILS at Step 3 (inserting transactions), the RLS error is confirmed.
+
+DEPLOYMENT & VERIFICATION CHECKLIST
+After implementing fixes, follow this order:
+Step 1: Fix RLS Policies
+
+ Run SQL script in Supabase Dashboard (Solution A)
+ Verify policies created: SELECT * FROM pg_policies WHERE tablename = 'property_data'
+ Update app/dashboard/upload/actions.ts to use authenticated client
+
+Step 2: Deploy to Production
+bashgit add .
+git commit -m "Fix RLS policies and type safety issues"
+git push
+```
+
+- [ ] Verify deployment succeeded in Vercel dashboard
+- [ ] Check deployment logs for any errors
+
+### Step 3: Test in Production
+
+- [ ] Login to production site
+- [ ] Go to /dashboard/upload
+- [ ] Upload a test CSV file
+- [ ] Verify: Does upload succeed? (no RLS error)
+- [ ] Go to /dashboard/reports
+- [ ] Verify: Can you generate a report?
+- [ ] Download PDF
+- [ ] Verify: Does PDF contain correct data?
+
+### Step 4: Monitor for Errors
+
+- [ ] Check Vercel logs for any runtime errors
+- [ ] Check Supabase logs for any RLS policy violations
+- [ ] Test with multiple CSV formats (AppFolio, Buildium)
+
+---
+
+## IF FIXES DON'T WORK
+
+**If Solution A (RLS policies) fails:**
+
+1. Check Supabase logs: Dashboard → Logs → Filter for "property_data"
+2. Look for specific RLS error messages
+3. Verify the authenticated user's customer_id matches the data being inserted
+4. Try Solution B (Service Role bypass)
+
+**If types still cause issues:**
+
+1. Run TypeScript compiler: `npm run build`
+2. Fix any type errors that appear
+3. Do NOT use `@ts-ignore` to bypass errors
+4. Ask for specific type errors if stuck
+
+**If E2E test fails:**
+
+1. Note exactly which step fails
+2. Check the error message
+3. Verify environment variables are set correctly
+4. Check if database has the required tables/columns
+
+---
+
+## EXPECTED RESULTS
+
+### After Fix 1 (RLS):
+```
+✅ CSV upload works in production
+✅ No "row-level security policy" errors
+✅ Transactions appear in property_data table
+```
+
+### After Fix 2 (Types):
+```
+✅ No TypeScript compilation warnings
+✅ No `any` types in critical functions
+✅ No `@ts-ignore` comments
+✅ Proper error handling throughout
+```
+
+### After Fix 3 (E2E Test):
+```
+✅ Test script runs without errors
+✅ All 5 steps complete successfully
+✅ Report generation verified
+
+ROLLBACK PLAN
+If anything breaks:
+bash# Revert last commit
+git revert HEAD
+
+# Force deploy previous version
+git push --force
+Then investigate the specific error before trying again.
+
+CRITICAL NOTES:
+
+Fix RLS FIRST (blockers before improvements)
+Test in production after EACH fix (don't batch test)
+Keep Supabase SQL Editor open (you may need to adjust policies)
+Check Vercel logs immediately after deployment
+The RLS fix is the MOST CRITICAL - everything else depends on it

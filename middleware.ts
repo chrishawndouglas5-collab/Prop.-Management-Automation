@@ -58,8 +58,8 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Protect Dashboard routes
-    if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    // Protect Dashboard and Onboarding routes
+    if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/onboarding')) {
         if (!user) {
             return NextResponse.redirect(new URL('/auth/login', request.url))
         }

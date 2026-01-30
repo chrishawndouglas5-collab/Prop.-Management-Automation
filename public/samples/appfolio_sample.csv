@@ -1,0 +1,33 @@
+Date,Property,Description,Amount,Type,Category
+01/15/2024,Sunset Apartments,Rent Payment - Unit 1,1200.00,Income,Rent Income
+01/15/2024,Sunset Apartments,Rent Payment - Unit 2,1200.00,Income,Rent Income
+01/15/2024,Sunset Apartments,Rent Payment - Unit 3,1200.00,Income,Rent Income
+01/15/2024,Sunset Apartments,Rent Payment - Unit 4,1200.00,Income,Rent Income
+01/15/2024,Sunset Apartments,Rent Payment - Unit 5,1200.00,Income,Rent Income
+01/15/2024,Sunset Apartments,Late Fee - Unit 4,50.00,Income,Late Fees
+01/20/2024,Sunset Apartments,Emergency Plumbing - Unit 2,450.00,Expense,Repairs & Maintenance
+01/01/2024,Sunset Apartments,Monthly Management Fee,480.00,Expense,Management Fees
+01/10/2024,Sunset Apartments,City Water Bill,650.00,Expense,Utilities
+01/10/2024,Sunset Apartments,Waste Management,200.00,Expense,Utilities
+01/15/2024,Downtown Lofts,Rent Payment - Apt 1A,1800.00,Income,Rent Income
+01/15/2024,Downtown Lofts,Rent Payment - Apt 1B,1800.00,Income,Rent Income
+01/15/2024,Downtown Lofts,Rent Payment - Apt 2A,1800.00,Income,Rent Income
+01/15/2024,Downtown Lofts,Pet Fee - Apt 1A,25.00,Income,Pet Fees
+01/05/2024,Downtown Lofts,Elevator Service Contract,250.00,Expense,Repairs & Maintenance
+01/01/2024,Downtown Lofts,Management Fee,432.00,Expense,Management Fees
+02/15/2024,Sunset Apartments,Rent Payment - Unit 1,1200.00,Income,Rent Income
+02/15/2024,Sunset Apartments,Rent Payment - Unit 2,1200.00,Income,Rent Income
+02/15/2024,Sunset Apartments,Rent Payment - Unit 3,1200.00,Income,Rent Income
+02/15/2024,Sunset Apartments,Rent Payment - Unit 4,1200.00,Income,Rent Income
+02/15/2024,Sunset Apartments,Rent Payment - Unit 5,1200.00,Income,Rent Income
+02/12/2024,Sunset Apartments,HVAC Repair - Unit 5,320.00,Expense,Repairs & Maintenance
+02/01/2024,Sunset Apartments,Monthly Management Fee,480.00,Expense,Management Fees
+02/10/2024,Sunset Apartments,City Water Bill,645.00,Expense,Utilities
+02/15/2024,Downtown Lofts,Rent Payment - Apt 1A,1800.00,Income,Rent Income
+02/15/2024,Downtown Lofts,Rent Payment - Apt 1B,1800.00,Income,Rent Income
+02/15/2024,Downtown Lofts,Rent Payment - Apt 2A,1800.00,Income,Rent Income
+02/20/2024,Downtown Lofts,Lobby Painting,800.00,Expense,Repairs & Maintenance
+02/01/2024,Downtown Lofts,Management Fee,432.00,Expense,Management Fees
+03/15/2024,Willow Creek Home,Rent Payment,2500.00,Income,Rent Income
+03/05/2024,Willow Creek Home,Lawn Service,120.00,Expense,Landscaping
+03/01/2024,Willow Creek Home,Management Fee,200.00,Expense,Management Fees

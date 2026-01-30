@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { updateCompanyProfile } from './actions'
 import { User, CreditCard, Shield } from 'lucide-react'
+import { LogoUploader } from './logo-uploader'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -31,6 +32,9 @@ export default async function SettingsPage() {
             </div>
 
             <div className="grid gap-6">
+                {/* Logo Upload Card */}
+                <LogoUploader currentLogoUrl={customer?.logo_url} customerId={customer?.id} />
+
                 {/* Company Profile Card */}
                 <Card className="glass border-white/10 bg-card/30">
                     <CardHeader>

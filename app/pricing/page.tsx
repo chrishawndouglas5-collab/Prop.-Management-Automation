@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, ArrowRight } from "lucide-react";
+import { MarketingNavbar } from "@/components/marketing/MarketingNavbar";
+import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 
 export default function PricingPage() {
     const [units, setUnits] = useState<number>(50);
+    const [monthlyCost, setMonthlyCost] = useState<number>(0);
 
     const calculateCost = (quantity: number) => {
         let cost = 0;
@@ -43,133 +46,182 @@ export default function PricingPage() {
         return cost;
     };
 
-    const monthlyCost = calculateCost(units || 0);
+    useEffect(() => {
+        setMonthlyCost(calculateCost(units || 0));
+    }, [units]);
 
     return (
-        <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-50 font-sans">
-            <header className="px-6 h-16 flex items-center justify-between border-b border-white/10 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
-                <Link className="flex items-center justify-center gap-2" href="/">
-                    <span className="font-bold text-lg tracking-tight">PropAuto</span>
-                </Link>
-                <nav className="ml-auto flex gap-4 sm:gap-6 items-center">
-                    <Link className="text-sm font-medium hover:text-brand-400 transition-colors" href="/pricing">Pricing</Link>
-                    <Link className="text-sm font-medium hover:text-brand-400 transition-colors" href="/auth/login">Log In</Link>
-                    <Link href="/auth/signup">
-                        <Button size="sm" className="bg-brand-600 hover:bg-brand-500 text-white border-none">Get Started</Button>
-                    </Link>
-                </nav>
-            </header>
+        <div className="min-h-screen bg-gray-50 font-sans text-slate-900">
+            <MarketingNavbar />
 
-            <main className="flex-1 py-12 md:py-24">
-                <div className="container px-4 md:px-6 mx-auto max-w-5xl">
-                    <div className="text-center mb-12">
-                        <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500">
-                            Simple, Transparent Pricing
-                        </h1>
-                        <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-                            Automated property owner reports that scale with your business.
+            <div className="container mx-auto px-4 py-16">
+                <div className="max-w-5xl mx-auto">
+                    {/* Header */}
+                    <div className="text-center mb-16">
+                        <h1 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h1>
+                        <p className="text-xl text-gray-600">
+                            Pay only for what you use. The more you grow, the less you pay per unit.
                         </p>
                     </div>
 
-                    <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-start">
-                        {/* Calculator Card */}
-                        <Card className="bg-zinc-900 border-zinc-800">
-                            <CardHeader>
-                                <CardTitle className="text-2xl text-white">Estimate Your Cost</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-zinc-400">
+                    {/* Pricing Tiers Table */}
+                    <Card className="mb-12 border-none shadow-md">
+                        <CardHeader className="bg-white border-b">
+                            <CardTitle>Volume-Based Pricing</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-slate-50">
+                                        <tr className="border-b">
+                                            <th className="text-left py-4 px-6 text-sm font-semibold text-slate-600">Units Managed</th>
+                                            <th className="text-left py-4 px-6 text-sm font-semibold text-slate-600">Price Per Unit</th>
+                                            <th className="text-left py-4 px-6 text-sm font-semibold text-slate-600">Example Monthly Cost</th>
+                                            <th className="text-left py-4 px-6 text-sm font-semibold text-slate-600">Time Saved</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white">
+                                        {[
+                                            { range: '1-100 units', price: '$3.00/unit', example: '50 units = $150/mo', time: '5 hours' },
+                                            { range: '101-300 units', price: '$2.50/unit', example: '200 units = $500/mo', time: '20 hours' },
+                                            { range: '301-500 units', price: '$2.00/unit', example: '400 units = $800/mo', time: '40 hours' },
+                                            { range: '501+ units', price: '$1.50/unit', example: '600 units = $900/mo', time: '60 hours' },
+                                        ].map((tier, i) => (
+                                            <tr key={i} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                                                <td className="py-4 px-6 font-medium">{tier.range}</td>
+                                                <td className="py-4 px-6 text-blue-600 font-semibold">{tier.price}</td>
+                                                <td className="py-4 px-6">{tier.example}</td>
+                                                <td className="py-4 px-6 text-green-600">{tier.time}/month</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Interactive Calculator */}
+                    <Card className="mb-12 bg-blue-50 border-blue-200">
+                        <CardHeader>
+                            <CardTitle className="text-blue-900">Calculate Your Cost</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-blue-900">
                                         How many units do you manage?
                                     </label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={units}
-                                        onChange={(e) => setUnits(parseInt(e.target.value) || 0)}
-                                        className="bg-zinc-950 border-zinc-800 text-white h-12 text-lg"
-                                    />
+                                    <div className="flex items-center gap-4">
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            placeholder="Enter number of units"
+                                            value={units}
+                                            onChange={(e) => setUnits(parseInt(e.target.value) || 0)}
+                                            className="w-full max-w-xs h-12 text-lg bg-white border-blue-200 focus:ring-blue-500"
+                                        />
+                                        <div className="text-sm text-blue-700 font-medium">units</div>
+                                    </div>
                                 </div>
-
-                                <div className="p-6 bg-brand-900/10 rounded-xl border border-brand-500/20 text-center">
-                                    <div className="text-sm text-brand-300 font-medium mb-1">YOUR ESTIMATED MONTHLY COST</div>
-                                    <div className="text-5xl font-bold text-white mb-2">
+                                <div className="p-6 bg-white rounded-xl border border-blue-100 shadow-sm">
+                                    <div className="text-sm text-gray-500 font-medium mb-1">YEARLY ESTIMATED MONTHLY COST</div>
+                                    <div className="text-4xl font-bold text-blue-600">
                                         ${monthlyCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <div className="text-sm text-zinc-500">
-                                        Auto-adjusts based on volume
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 pt-4 border-t border-zinc-800">
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div className="text-zinc-400">1-100 units</div>
-                                        <div className="text-right text-white font-medium">$3.00 / unit</div>
-                                        <div className="text-zinc-400">101-300 units</div>
-                                        <div className="text-right text-white font-medium">$2.50 / unit</div>
-                                        <div className="text-zinc-400">301-500 units</div>
-                                        <div className="text-right text-white font-medium">$2.00 / unit</div>
-                                        <div className="text-zinc-400">501+ units</div>
-                                        <div className="text-right text-white font-medium">$1.50 / unit</div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Link href="/auth/signup" className="w-full">
-                                    <Button size="lg" className="w-full bg-brand-600 hover:bg-brand-500 text-white">
-                                        Start Free Trial
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                    <p className="text-xs text-center text-zinc-500 mt-3">
-                                        14-day free trial. No credit card required.
+                                    <p className="text-sm text-gray-600 mt-2">
+                                        Based on volume pricing. Lower per-unit cost as you scale.
                                     </p>
-                                </Link>
-                            </CardFooter>
-                        </Card>
-
-                        {/* Features List */}
-                        <div className="space-y-8">
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-bold text-white">Everything included:</h3>
-                                <ul className="space-y-3">
-                                    {[
-                                        "Unlimited monthly reports",
-                                        "3 professional PDF templates",
-                                        "Automated email delivery",
-                                        "CSV data upload (AppFolio & Buildium)",
-                                        "Secure cloud storage",
-                                        "Priority email support",
-                                        "No setup fees or contracts"
-                                    ].map((feature) => (
-                                        <li key={feature} className="flex items-start gap-3 text-zinc-300">
-                                            <Check className="h-5 w-5 text-brand-500 shrink-0" />
-                                            <span>{feature}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            <div className="space-y-4 pt-8 border-t border-zinc-800">
-                                <h3 className="text-xl font-bold text-white">Frequently Asked Questions</h3>
-                                <div className="space-y-4">
-                                    {[
-                                        { q: "How does billing work?", a: "We bill monthly based on the number of units you manage." },
-                                        { q: "Can I cancel anytime?", a: "Yes, there are no long-term contracts. You can cancel directly from your dashboard." },
-                                        { q: "What payment methods do you accept?", a: "We accept all major credit cards and PayPal via our secure payment processor, Paddle." }
-                                    ].map((faq, i) => (
-                                        <div key={i} className="space-y-1">
-                                            <h4 className="font-medium text-white">{faq.q}</h4>
-                                            <p className="text-sm text-zinc-400">{faq.a}</p>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
-                        </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* What's Included */}
+                    <Card className="mb-12 border-none shadow-md">
+                        <CardHeader>
+                            <CardTitle>Everything Included</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {[
+                                    'Unlimited monthly reports',
+                                    '3 professional PDF templates',
+                                    'Automated email delivery',
+                                    'CSV data upload (AppFolio & Buildium)',
+                                    'Secure cloud storage',
+                                    'Historical report access',
+                                    'Customer support via email',
+                                    'No setup fees',
+                                    'No long-term contracts',
+                                    'Cancel anytime',
+                                ].map((feature, i) => (
+                                    <div key={i} className="flex items-start gap-2">
+                                        <Check className="text-green-600 mt-1 flex-shrink-0" size={20} />
+                                        <span className="text-gray-700 font-medium">{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* FAQ */}
+                    <Card className="mb-12 border-none shadow-md">
+                        <CardHeader>
+                            <CardTitle>Frequently Asked Questions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                {[
+                                    {
+                                        q: 'How does billing work?',
+                                        a: 'Billing is monthly based on the number of units you manage. We automatically calculate your price using our volume discount tiers.',
+                                    },
+                                    {
+                                        q: 'Can I change my plan?',
+                                        a: 'Your plan adjusts automatically based on your unit count. As you add or remove properties, your billing updates accordingly.',
+                                    },
+                                    {
+                                        q: 'What if I add more properties?',
+                                        a: 'Simply add the new properties in your dashboard. Your next invoice will reflect the updated unit count with appropriate volume discounts.',
+                                    },
+                                    {
+                                        q: 'Is there a contract?',
+                                        a: 'No. PropAuto is month-to-month. Cancel anytime with no penalties or fees.',
+                                    },
+                                    {
+                                        q: 'What payment methods do you accept?',
+                                        a: 'We accept all major credit cards via Paddle, our payment processor. Paddle handles billing securely.',
+                                    },
+                                    {
+                                        q: 'Can I cancel anytime?',
+                                        a: 'Yes. Cancel anytime through the billing portal. You\'ll retain access until the end of your billing period.',
+                                    },
+                                ].map((faq, i) => (
+                                    <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
+                                        <h3 className="font-semibold mb-2 text-slate-800">{faq.q}</h3>
+                                        <p className="text-gray-600 leading-relaxed">{faq.a}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* CTA */}
+                    <div className="text-center">
+                        <Link href="/auth/signup">
+                            <Button size="lg" className="text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all">
+                                Start Your Free 14-Day Trial
+                                <ArrowRight className="ml-2 h-5 w-5" />
+                            </Button>
+                        </Link>
+                        <p className="mt-4 text-sm text-gray-600">
+                            No credit card required • Full access • Cancel anytime
+                        </p>
                     </div>
                 </div>
-            </main>
+            </div>
 
-            {/* Footer will be injected by layout or we can add a simplified one here */}
+            <MarketingFooter />
         </div>
-    );
+    )
 }

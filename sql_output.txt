@@ -1,0 +1,25 @@
+[Paste SQL Result Here]
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  INSERT INTO public.customers (user_id, contact_email, status, company_name)
+  VALUES (
+    new.id,
+    new.email,
+    'trialing',
+    COALESCE(new.raw_user_meta_data->>'company_name', 'My Company')
+  )
+  ON CONFLICT (user_id) DO NOTHING; -- Idempotency: prevent errors if record exists
+  
+  RETURN new;
+EXCEPTION WHEN OTHERS THEN
+  -- Log error (visible in Postgres logs) but try not to block signup if possible? 
+  -- No, for this app, we need the customer record. We re-raise to see the error.
+  RAISE WARNING 'Error in handle_new_user: %', SQLERRM;
+  RETURN new; 
+END;
+$function$

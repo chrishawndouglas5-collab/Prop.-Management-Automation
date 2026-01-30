@@ -21,12 +21,18 @@ export default async function DashboardLayout({
     }
 
     // Fetch customer details for header
-    const { data: customer } = await supabase
+    const { data: customer, error } = await supabase
         .from('customers')
         .select('company_name, contact_email')
         .eq('user_id', user.id)
-        .returns<{ company_name: string; contact_email: string }>()
         .single() as any
+
+    // CRITICAL FIX: Handle race condition where Trigger hasn't created customer yet
+    if (error || !customer) {
+        console.log("Customer record missing, invoking self-healing loader...");
+        const { AccountSetupLoader } = await import('@/components/dashboard/account-setup-loader')
+        return <AccountSetupLoader userId={user.id} />
+    }
 
     return (
         <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">

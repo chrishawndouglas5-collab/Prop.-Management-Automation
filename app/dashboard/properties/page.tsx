@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { AddPropertyDialog } from "@/components/dashboard/add-property-dialog"
 import { Trash2, Building2 } from 'lucide-react'
+import { DeletePropertyButton } from './delete-button'
 import { deleteProperty } from './actions'
 
 export default async function PropertiesPage() {
@@ -71,15 +72,7 @@ export default async function PropertiesPage() {
                                     <TableCell className="text-muted-foreground">{property.address || '-'}</TableCell>
                                     <TableCell className="text-right font-medium">{property.unit_count}</TableCell>
                                     <TableCell className="text-right">
-                                        <form action={async () => {
-                                            'use server'
-                                            await deleteProperty(property.id)
-                                        }}>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">Delete</span>
-                                            </Button>
-                                        </form>
+                                        <DeletePropertyButton propertyId={property.id} />
                                     </TableCell>
                                 </TableRow>
                             ))}

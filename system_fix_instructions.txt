@@ -1,0 +1,47 @@
+*** PROP AUTO SYSTEM FIX INSTRUCTIONS ***
+
+CRITICAL ISSUE:
+The connection between your Website (Vercel) and your Database (Supabase) is using an invalid "Service Role Key".
+This prevents the system from saving Uploads or generating Reports.
+
+---
+
+PHASE 1: ROTATE KEYS (IN SUPABASE)
+1. Login to your Supabase Dashboard: https://supabase.com/dashboard/project/ohqxjnmxgkff/settings/api
+2. Scroll down to the "Project API keys" section.
+3. Find the key row labeled "service_role" (It has "secret" tag next to it).
+4. Click "Generate new secret" (or "Rotate secret").
+   - Confirm the rotation. This revokes the old key.
+5. Once the new key is generated, click "Reveal" and Copy it.
+   - It should be a very long string starting with "ey..."
+
+---
+
+PHASE 2: UPDATE ENVIRONMENT (IN VERCEL)
+1. Login to your Vercel Dashboard: https://vercel.com/dashboard
+2. Select your project: "prop-management-automation"
+3. Go to "Settings" -> "Environment Variables".
+4. Find the variable named: SUPABASE_SERVICE_ROLE_KEY
+5. Click "Edit", delete the old value, and PASTE the new key you just copied.
+6. Click "Save".
+
+---
+
+PHASE 3: FORCE UPDATE (REDEPLOY)
+Changing variables does not affect the live site until you redeploy.
+1. In Vercel, go to the "Deployments" tab.
+2. Find your most recent deployment (the top one).
+3. Click the three dots (⋮) on the right side.
+4. Select "Redeploy".
+5. IMPORTANT: Uncheck "Use existing build cache" if that option appears (to ensure a fresh build).
+6. Click "Redeploy" and wait for it to finish (approx 2-3 minutes).
+
+---
+
+PHASE 4: VERIFY
+1. Go to https://www.abassolutions.net
+2. Log in.
+3. Go to "Data Processing" -> Upload a CSV.
+4. It should now upload successfully without the "RLS Policy" error.
+
+*** END INSTRUCTIONS ***

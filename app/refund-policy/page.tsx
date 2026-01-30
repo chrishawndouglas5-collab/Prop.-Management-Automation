@@ -1,58 +1,53 @@
-import React from 'react'
-
 export default function RefundPolicyPage() {
     return (
-        <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-50 font-sans">
-            <div className="max-w-4xl mx-auto py-16 px-6">
-                <h1 className="text-4xl font-bold mb-2 text-white">Refund Policy</h1>
-                <p className="text-zinc-400 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
+        <div className="container mx-auto px-4 py-16 max-w-4xl">
+            <h1 className="text-4xl font-bold mb-8">Refund Policy</h1>
 
-                <div className="prose prose-invert max-w-none text-zinc-300 space-y-8">
-                    <section>
-                        <h2 className="text-2xl font-semibold text-white mb-4">14-Day Free Trial</h2>
-                        <p>We want you to be completely satisfied with PropAuto. That's why:</p>
-                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li>All new customers receive a <strong>14-day free trial</strong>.</li>
-                            <li>No credit card is required to start your trial.</li>
-                            <li>You can cancel anytime during the trial period with <strong>zero charges</strong>.</li>
-                        </ul>
-                    </section>
+            <div className="prose prose-lg max-w-none text-muted-foreground">
+                <p className="text-gray-400 mb-8">
+                    <strong>Last Updated:</strong> January 26, 2025
+                </p>
 
-                    <section>
-                        <h2 className="text-2xl font-semibold text-white mb-4">Monthly Subscription Refunds</h2>
-                        <p>For paid monthly subscriptions:</p>
-                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li>We <strong>do not offer refunds for partial months</strong> of service.</li>
-                            <li>If you cancel your subscription, your service will continue until the end of your current billing period.</li>
-                            <li>You will not be charged again after cancellation.</li>
-                        </ul>
-                    </section>
+                <section className="mb-8">
+                    <h2 className="text-2xl font-semibold mb-4 text-foreground">Payment Processing</h2>
+                    <p className="mb-4">
+                        All payments for PropAuto are processed by Paddle.com Market Limited ("Paddle"),
+                        our authorized reseller and Merchant of Record. PropAuto is operated by
+                        Chrishawn Abas doing business as Abas Solutions.
+                    </p>
+                </section>
 
-                    <section>
-                        <h2 className="text-2xl font-semibold text-white mb-4">Billing Errors</h2>
-                        <p>If you believe you have been incorrectly charged, please contact us immediately.</p>
-                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li>Email <strong>support@abassolutions.net</strong> within 30 days of the charge.</li>
-                            <li>Include your account email and the date of the charge.</li>
-                            <li>If an error is confirmed, we will issue a full refund for the incorrect amount.</li>
-                        </ul>
-                    </section>
+                <section className="mb-8">
+                    <h2 className="text-2xl font-semibold mb-4 text-foreground">Refund Policy</h2>
+                    <p className="mb-4">
+                        Refunds are provided at the sole discretion of Paddle and on a case-by-case
+                        basis and may be refused. Paddle will refuse a refund request if we find
+                        evidence of fraud, refund abuse, or other manipulative behaviour that
+                        entitles Paddle to counterclaim the refund.
+                    </p>
+                    <p className="mb-4">
+                        This does not affect your rights as a Consumer in relation to Products
+                        which are not as described, faulty or not fit for purpose.
+                    </p>
+                </section>
 
-                    <section>
-                        <h2 className="text-2xl font-semibold text-white mb-4">How to Request a Refund</h2>
-                        <p>To submit a refund request for a billing error or exceptional circumstance:</p>
-                        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg mt-4">
-                            <p className="font-medium text-white">Email: support@abassolutions.net</p>
-                            <p className="text-sm mt-2">Please include:</p>
-                            <ul className="list-disc pl-5 text-sm mt-1 space-y-1">
-                                <li>Your Account Email</li>
-                                <li>Reason for the request</li>
-                                <li>Date of the charge in question</li>
-                            </ul>
-                            <p className="text-sm mt-4 text-zinc-400">We aim to respond to all refund requests within 5 business days.</p>
-                        </div>
-                    </section>
-                </div>
+                <section className="mb-8">
+                    <h2 className="text-2xl font-semibold mb-4 text-foreground">How to Request a Refund</h2>
+                    <p className="mb-4">
+                        To request a refund, please contact Paddle support:
+                    </p>
+                    <p className="mb-4">
+                        Email: <a href="mailto:support@paddle.com" className="text-brand-DEFAULT hover:underline">support@paddle.com</a><br />
+                        Website: <a href="https://paddle.com/support" target="_blank" rel="noopener noreferrer" className="text-brand-DEFAULT hover:underline">paddle.com/support</a>
+                    </p>
+                    <p className="mb-4">
+                        You may also contact us and we will forward your request to Paddle:
+                    </p>
+                    <p className="mb-4">
+                        Abas Solutions<br />
+                        Email: <a href="mailto:support@abassolutions.net" className="text-brand-DEFAULT hover:underline">support@abassolutions.net</a>
+                    </p>
+                </section>
             </div>
         </div>
     )

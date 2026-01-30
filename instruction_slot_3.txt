@@ -1,0 +1,611 @@
+[PASTE INSTRUCTIONS HERE]
+Mission: Enhance PDF Report Design with Bucket Structure and Visual Clarity
+You need to improve the existing PDF report generation to use a "bucket" (category grouping) structure instead of line-by-line transactions. This makes reports more understandable for property owners who aren't accountants.
+CRITICAL RULES:
+
+Do NOT modify database schema
+Do NOT break existing report generation workflow
+Do NOT change CSV upload or data processing
+ONLY UPDATE the PDF template/layout and calculation logic
+
+
+CURRENT STATE
+PropAuto currently generates PDF reports from property transaction data. The data includes:
+
+Transactions with: date, category, description, amount, type (income/expense)
+Property information
+Customer branding (logo, company name)
+
+
+REQUIRED IMPROVEMENTS
+Improvement 1: Bucket/Category Grouping
+Current Problem: Reports may show transactions line-by-line, which is hard to digest.
+Solution: Group transactions into summary buckets/categories.
+File to Update: lib/reports/document.tsx (or wherever ReportDocument component lives)
+New Report Structure:
+════════════════════════════════════════
+PROPERTY NAME
+Monthly Financial Report
+Month/Year
+════════════════════════════════════════
+
+[Customer Logo]
+
+════════════════════════════════════════
+INCOME SUMMARY
+════════════════════════════════════════
+
+Rent Income                    $15,000.00
+Late Fees                         $500.00
+Other Income                      $200.00
+─────────────────────────────────────────
+TOTAL INCOME                   $15,700.00
+
+
+════════════════════════════════════════
+EXPENSE SUMMARY
+════════════════════════════════════════
+
+Maintenance & Repairs          $2,500.00
+Utilities                        $800.00
+Property Management Fees       $1,200.00
+Insurance                        $400.00
+Landscaping                      $300.00
+Other Expenses                   $100.00
+─────────────────────────────────────────
+TOTAL EXPENSES                 $5,300.00
+
+
+════════════════════════════════════════
+NET OPERATING INCOME
+════════════════════════════════════════
+
+Total Income                   $15,700.00
+Total Expenses                 ($5,300.00)
+─────────────────────────────────────────
+NET OPERATING INCOME (NOI)     $10,400.00
+
+
+════════════════════════════════════════
+KEY METRICS
+════════════════════════════════════════
+
+Operating Expense Ratio             33.8%
+Net Operating Margin                66.2%
+
+Month-Over-Month Change:        +$1,200.00
+
+Improvement 2: Visual Hierarchy
+Current Problem: Reports may be text-heavy and hard to scan.
+Solution: Add visual elements and clear hierarchy.
+Design Requirements:
+
+Summary-First Layout:
+
+Big numbers at the top (NOI in large font)
+Categories below (smaller but still prominent)
+Details at the bottom (if needed)
+
+
+Color Coding:
+
+Green text for income totals
+Red text for expense totals
+Black text for NOI
+Gray text for labels
+
+
+Typography Hierarchy:
+
+Section headers: 18pt, bold, uppercase
+Category labels: 12pt, regular
+Numbers: 12pt, bold, right-aligned
+Total lines: 14pt, bold
+
+
+Visual Separators:
+
+Horizontal lines between sections
+Subtle background shading for total rows
+Clear spacing between buckets
+
+
+
+
+Improvement 3: Data Processing for Buckets
+File to Update: lib/reports/calculator.ts (or wherever metrics are calculated)
+Add function to group transactions by category:
+typescriptinterface CategorySummary {
+  [category: string]: number
+}
+
+interface ReportData {
+  income: CategorySummary
+  expenses: CategorySummary
+  totalIncome: number
+  totalExpenses: number
+  noi: number
+  expenseRatio: number
+  netMargin: number
+}
+
+function groupTransactionsByCategory(transactions: Transaction[]): ReportData {
+  const income: CategorySummary = {}
+  const expenses: CategorySummary = {}
+  
+  let totalIncome = 0
+  let totalExpenses = 0
+  
+  // Group transactions by category
+  for (const transaction of transactions) {
+    const amount = Math.abs(transaction.amount)
+    
+    if (transaction.transaction_type === 'income') {
+      const category = normalizeCategory(transaction.category, 'income')
+      income[category] = (income[category] || 0) + amount
+      totalIncome += amount
+    } else {
+      const category = normalizeCategory(transaction.category, 'expense')
+      expenses[category] = (expenses[category] || 0) + amount
+      totalExpenses += amount
+    }
+  }
+  
+  const noi = totalIncome - totalExpenses
+  const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0
+  const netMargin = totalIncome > 0 ? (noi / totalIncome) * 100 : 0
+  
+  return {
+    income,
+    expenses,
+    totalIncome,
+    totalExpenses,
+    noi,
+    expenseRatio,
+    netMargin,
+  }
+}
+
+function normalizeCategory(category: string, type: 'income' | 'expense'): string {
+  // Normalize common category names
+  const normalized = category.toLowerCase().trim()
+  
+  if (type === 'income') {
+    if (normalized.includes('rent')) return 'Rent Income'
+    if (normalized.includes('late') || normalized.includes('fee')) return 'Late Fees'
+    return 'Other Income'
+  } else {
+    if (normalized.includes('maintenance') || normalized.includes('repair')) {
+      return 'Maintenance & Repairs'
+    }
+    if (normalized.includes('utilit')) return 'Utilities'
+    if (normalized.includes('management') || normalized.includes('fee')) {
+      return 'Property Management Fees'
+    }
+    if (normalized.includes('insurance')) return 'Insurance'
+    if (normalized.includes('landscape') || normalized.includes('lawn')) {
+      return 'Landscaping'
+    }
+    if (normalized.includes('tax')) return 'Property Taxes'
+    if (normalized.includes('hoa')) return 'HOA Fees'
+    return 'Other Expenses'
+  }
+}
+
+Improvement 4: Updated PDF Template
+File to Update: lib/reports/document.tsx
+New ReportDocument component structure:
+typescriptimport { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+
+const styles = StyleSheet.create({
+  page: {
+    padding: 40,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    marginBottom: 30,
+    borderBottom: '2pt solid #000',
+    paddingBottom: 15,
+  },
+  logo: {
+    width: 100,
+    height: 50,
+    marginBottom: 10,
+    objectFit: 'contain',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  section: {
+    marginBottom: 25,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    borderBottom: '1pt solid #ccc',
+    paddingBottom: 5,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#f5f5f5',
+    borderTop: '1pt solid #000',
+    marginTop: 5,
+  },
+  categoryLabel: {
+    fontSize: 12,
+    color: '#333',
+  },
+  amount: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  totalAmount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  incomeAmount: {
+    color: '#059669', // green
+  },
+  expenseAmount: {
+    color: '#dc2626', // red
+  },
+  noiSection: {
+    marginTop: 10,
+    padding: 15,
+    backgroundColor: '#f9fafb',
+    borderRadius: 5,
+  },
+  noiAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+  },
+  metric: {
+    textAlign: 'center',
+  },
+  metricLabel: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 5,
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+})
+
+interface ReportDocumentProps {
+  propertyName: string
+  month: number
+  year: number
+  data: ReportData
+  logoUrl?: string
+  companyName?: string
+}
+
+export function ReportDocument({
+  propertyName,
+  month,
+  year,
+  data,
+  logoUrl,
+  companyName,
+}: ReportDocumentProps) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+  }
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          {logoUrl && <Image src={logoUrl} style={styles.logo} />}
+          <Text style={styles.title}>{propertyName}</Text>
+          <Text style={styles.subtitle}>
+            Monthly Financial Report - {month}/{year}
+          </Text>
+          {companyName && (
+            <Text style={styles.subtitle}>Prepared by {companyName}</Text>
+          )}
+        </View>
+
+        {/* Income Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Income Summary</Text>
+          {Object.entries(data.income)
+            .sort(([, a], [, b]) => b - a) // Sort by amount descending
+            .map(([category, amount]) => (
+              <View key={category} style={styles.row}>
+                <Text style={styles.categoryLabel}>{category}</Text>
+                <Text style={[styles.amount, styles.incomeAmount]}>
+                  {formatCurrency(amount)}
+                </Text>
+              </View>
+            ))}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>TOTAL INCOME</Text>
+            <Text style={[styles.totalAmount, styles.incomeAmount]}>
+              {formatCurrency(data.totalIncome)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Expenses Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Expense Summary</Text>
+          {Object.entries(data.expenses)
+            .sort(([, a], [, b]) => b - a) // Sort by amount descending
+            .map(([category, amount]) => (
+              <View key={category} style={styles.row}>
+                <Text style={styles.categoryLabel}>{category}</Text>
+                <Text style={[styles.amount, styles.expenseAmount]}>
+                  {formatCurrency(amount)}
+                </Text>
+              </View>
+            ))}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>TOTAL EXPENSES</Text>
+            <Text style={[styles.totalAmount, styles.expenseAmount]}>
+              {formatCurrency(data.totalExpenses)}
+            </Text>
+          </View>
+        </View>
+
+        {/* NOI Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Net Operating Income</Text>
+          <View style={styles.row}>
+            <Text style={styles.categoryLabel}>Total Income</Text>
+            <Text style={styles.amount}>{formatCurrency(data.totalIncome)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.categoryLabel}>Total Expenses</Text>
+            <Text style={styles.amount}>
+              ({formatCurrency(data.totalExpenses)})
+            </Text>
+          </View>
+          <View style={[styles.totalRow, styles.noiSection]}>
+            <Text style={styles.totalLabel}>NET OPERATING INCOME (NOI)</Text>
+            <Text style={styles.noiAmount}>{formatCurrency(data.noi)}</Text>
+          </View>
+        </View>
+
+        {/* Key Metrics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Key Metrics</Text>
+          <View style={styles.metricsGrid}>
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Operating Expense Ratio</Text>
+              <Text style={styles.metricValue}>
+                {data.expenseRatio.toFixed(1)}%
+              </Text>
+            </View>
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Net Operating Margin</Text>
+              <Text style={styles.metricValue}>
+                {data.netMargin.toFixed(1)}%
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={{ position: 'absolute', bottom: 30, left: 40, right: 40 }}>
+          <Text style={{ fontSize: 8, color: '#999', textAlign: 'center' }}>
+            Generated by PropAuto on {new Date().toLocaleDateString()} | This
+            report is for informational purposes only
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  )
+}
+
+Improvement 5: Update Report Generator
+File to Update: lib/reports/generator.ts
+Modify the generatePropertyReport function to use new structure:
+typescriptexport async function generatePropertyReport({
+  customerId,
+  propertyId,
+  month,
+  year,
+}: {
+  customerId: string
+  propertyId: string
+  month: number
+  year: number
+}) {
+  const supabase = createClient()
+
+  // Fetch property and customer details
+  const { data: property } = await supabase
+    .from('properties')
+    .select('property_name')
+    .eq('id', propertyId)
+    .single()
+
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('company_name, logo_url')
+    .eq('id', customerId)
+    .single()
+
+  // Fetch transactions for this property and month
+  const startDate = new Date(year, month - 1, 1)
+  const endDate = new Date(year, month, 0)
+
+  const { data: transactions } = await supabase
+    .from('property_data')
+    .select('*')
+    .eq('property_id', propertyId)
+    .gte('transaction_date', startDate.toISOString())
+    .lte('transaction_date', endDate.toISOString())
+
+  if (!transactions || transactions.length === 0) {
+    throw new Error('No transaction data found for this period')
+  }
+
+  // Process transactions into bucket structure
+  const reportData = groupTransactionsByCategory(transactions)
+
+  // Generate PDF with new structure
+  const pdfBuffer = await renderToBuffer(
+    <ReportDocument
+      propertyName={property.property_name}
+      month={month}
+      year={year}
+      data={reportData}
+      logoUrl={customer?.logo_url}
+      companyName={customer?.company_name}
+    />
+  )
+
+  // Upload to storage (existing logic)
+  const filename = `${customerId}/${propertyId}/${year}-${month}.pdf`
+  const { data: uploadData, error } = await supabase.storage
+    .from('reports')
+    .upload(filename, pdfBuffer, {
+      contentType: 'application/pdf',
+      upsert: true,
+    })
+
+  if (error) throw error
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('reports')
+    .getPublicUrl(filename)
+
+  // Save report record
+  await supabase.from('reports').insert({
+    customer_id: customerId,
+    property_id: propertyId,
+    report_month: month,
+    report_year: year,
+    pdf_url: publicUrl,
+    storage_path: filename,
+    generated_at: new Date().toISOString(),
+    status: 'generated',
+  })
+
+  return publicUrl
+}
+
+Testing Checklist
+After implementing these changes:
+Visual Tests:
+
+ Generate test report with sample data
+ Verify income categories are grouped (not line-by-line)
+ Verify expense categories are grouped
+ Verify NOI is prominently displayed
+ Verify color coding works (green income, red expenses)
+ Verify totals are bold and stand out
+ Verify logo appears if provided
+ Verify proper spacing and hierarchy
+
+Functional Tests:
+
+ Upload CSV with transactions
+ Generate report
+ Download PDF
+ Verify all transactions are included (none missing)
+ Verify calculations are correct (totals match raw data)
+ Test with property that has many categories
+ Test with property that has few categories
+ Test with property that has only income (no expenses)
+ Test with property that has only expenses (no income)
+
+Existing Functionality Tests:
+
+ CSV upload still works
+ Property matching still works
+ Report generation cron job still works
+ Email delivery still works
+ Dashboard displays reports correctly
+ Admin panel still works
+
+
+Key Implementation Notes
+
+Backward Compatibility:
+
+Old reports (already generated) remain unchanged
+Only NEW reports use the bucket structure
+No migration of existing PDF files needed
+
+
+Category Normalization:
+
+The normalizeCategory function groups similar categories
+Examples: "Plumbing Repair" and "HVAC Maintenance" → "Maintenance & Repairs"
+You can expand the normalization logic based on real data
+
+
+Sorting:
+
+Categories within each section are sorted by amount (highest first)
+This helps property owners see where the money is going
+
+
+Flexibility:
+
+If a category doesn't match any known pattern, it goes to "Other Income" or "Other Expenses"
+This prevents data loss
+
+
+Metrics:
+
+Operating Expense Ratio = (Total Expenses / Total Income) × 100
+Net Operating Margin = (NOI / Total Income) × 100
+These are standard real estate metrics owners understand
+
+
+
+
+Files Modified
+Updated files:
+
+lib/reports/document.tsx (PDF template)
+lib/reports/calculator.ts (add grouping logic)
+lib/reports/generator.ts (use new data structure)
+
+No changes to:
+
+Database schema
+API routes
+CSV upload logic
+Dashboard pages
+Admin panel
+Authentication
+Billing

@@ -82,6 +82,44 @@ export interface Database {
                     created_at?: string
                 }
             }
+            property_data: {
+                Row: {
+                    id: string
+                    customer_id: string
+                    property_id: string | null
+                    transaction_date: string | null
+                    category: string | null
+                    description: string | null
+                    amount: number | null
+                    transaction_type: 'income' | 'expense' | null
+                    upload_batch_id: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    customer_id: string
+                    property_id?: string | null
+                    transaction_date?: string | null
+                    category?: string | null
+                    description?: string | null
+                    amount?: number | null
+                    transaction_type?: 'income' | 'expense' | null
+                    upload_batch_id?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    customer_id?: string
+                    property_id?: string | null
+                    transaction_date?: string | null
+                    category?: string | null
+                    description?: string | null
+                    amount?: number | null
+                    transaction_type?: 'income' | 'expense' | null
+                    upload_batch_id?: string | null
+                    created_at?: string
+                }
+            }
             reports: {
                 Row: {
                     id: string

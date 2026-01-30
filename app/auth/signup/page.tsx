@@ -42,25 +42,10 @@ export default function SignupPage() {
             if (!authData.user) throw new Error('Signup failed')
 
             // 2. Create customer record
-            // Note: In production, this is safer in a Trigger, but we'll do client-side insert for MVP speed related to RLS policies
-            // We rely on RLS to ensure they can only access their own record.
-            const { error: dbError } = await supabase
-                .from('customers')
-                .insert({
-                    user_id: authData.user.id,
-                    company_name: companyName,
-                    contact_email: email,
-                    status: 'trialing',
-                    unit_count: 0
-                } as any)
+            // HANDLED BY DB TRIGGER NOW to prevent race conditions
+            // const { error: dbError } = await supabase.from('customers').insert(...)
 
-            if (dbError) {
-                console.error('Customer creation failed:', dbError)
-                // If DB insert fails, we might want to alert support or handle cleanup
-                // For now, proceed as auth was successful
-            }
-
-            router.push('/dashboard')
+            router.push('/onboarding')
             router.refresh()
         } catch (err: any) {
             setError(err.message)
