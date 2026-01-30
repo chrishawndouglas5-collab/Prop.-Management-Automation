@@ -129,18 +129,8 @@ export async function generatePropertyReport({
     const publicUrl = UrlData.publicUrl
 
     // 6. Save report record
-    // Check if report already exists to avoid duplication errors if simple insert
-    // Or use upsert. Prompt says 'insert'. 
-    // Checking schema: 'reports' likely has customer_id, property_id, month, year.
-    // Let's use upsert or delete-then-insert if unique constraint exists.
-    // For now, pure insert might fail if constraint is active. I'll use `upsert` on ID if possible, but we don't have ID.
-    // I will try insert; if it fails due to conflict, I should handle it.
-    // Better: Select first.
-
-    // We can't easily select based on composite unique keys without knowing them.
-    // Let's assume standard Insert.
-
-    await supabase.from('reports').upsert({
+    // Upsert ensures that if a user regenerates a report for the same period, we update the existing record
+    const { error: saveError } = await supabase.from('reports').upsert({
         customer_id: customerId,
         property_id: propertyId,
         report_month: month,
@@ -149,7 +139,16 @@ export async function generatePropertyReport({
         storage_path: filename,
         generated_at: new Date().toISOString(),
         status: 'generated',
-    } as any, { onConflict: 'customer_id, property_id, report_month, report_year' })
+    } as any, {
+        onConflict: 'customer_id, property_id, report_month, report_year',
+        ignoreDuplicates: false
+    })
+
+    if (saveError) {
+        console.error('Failed to save report record:', saveError)
+        // We don't throw here because the PDF was successfully generated and uploaded
+        // The user can still access it if they have the link, but it won't show in the list
+    }
 
     return { url: publicUrl, buffer: pdfBuffer }
 }

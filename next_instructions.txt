@@ -1,0 +1,734 @@
+Mission: Add Report Viewing and Download to PropAuto
+You need to add functionality so users can VIEW and DOWNLOAD generated PDF reports from the dashboard. Currently, reports generate successfully but users have no way to access them.
+CRITICAL CONTEXT:
+
+Reports are generating successfully (stored in Supabase Storage)
+Users see "Generated & Emailed" but can't access the PDFs
+Need to add: View report list, Download links, Preview in browser
+
+
+IMPLEMENTATION PLAN
+Problem Analysis:
+Current state:
+
+Reports generate → Upload to Supabase Storage → Save URL to database
+But: Reports page shows generation status, then nothing
+Missing: UI to list generated reports with download links
+
+What needs to be added:
+
+Report history table showing all generated reports
+Download buttons for each report
+Preview/view in browser option
+Date filtering (view reports by month)
+
+
+FIX 1: UPDATE REPORTS PAGE TO SHOW GENERATED REPORTS
+File: app/dashboard/reports/page.tsx
+Replace the ENTIRE file with this enhanced version:
+typescript'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Download, Eye, FileText, Calendar } from 'lucide-react'
+
+interface Property {
+  id: string
+  property_name: string
+  unit_count: number
+}
+
+interface Report {
+  id: string
+  property_id: string
+  property_name: string
+  report_month: number
+  report_year: number
+  pdf_url: string
+  generated_at: string
+  status: string
+}
+
+export default function ReportsPage() {
+  const [properties, setProperties] = useState<Property[]>([])
+  const [reports, setReports] = useState<Report[]>([])
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [generating, setGenerating] = useState(false)
+  const [results, setResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    setLoading(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    // Get customer
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!customer) {
+      setLoading(false)
+      return
+    }
+
+    // Load properties
+    const { data: propertiesData } = await supabase
+      .from('properties')
+      .select('id, property_name, unit_count')
+      .eq('customer_id', customer.id)
+      .order('property_name')
+
+    setProperties(propertiesData || [])
+
+    // Load existing reports
+    const { data: reportsData } = await supabase
+      .from('reports')
+      .select('id, property_id, report_month, report_year, pdf_url, generated_at, status')
+      .eq('customer_id', customer.id)
+      .order('generated_at', { ascending: false })
+
+    // Join with property names
+    const reportsWithNames = reportsData?.map((report) => {
+      const property = propertiesData?.find((p) => p.id === report.property_id)
+      return {
+        ...report,
+        property_name: property?.property_name || 'Unknown Property',
+      }
+    })
+
+    setReports(reportsWithNames || [])
+
+    // Auto-detect month with data
+    await detectDataMonth(customer.id)
+
+    setLoading(false)
+  }
+
+  async function detectDataMonth(customerId: string) {
+    const { data: recentTransaction } = await supabase
+      .from('property_data')
+      .select('transaction_date')
+      .eq('customer_id', customerId)
+      .order('transaction_date', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (recentTransaction) {
+      const date = new Date(recentTransaction.transaction_date)
+      setSelectedMonth(date.getMonth() + 1)
+      setSelectedYear(date.getFullYear())
+    }
+  }
+
+  async function generateReports() {
+    setGenerating(true)
+    setResults([])
+
+    const resultsArray: any[] = []
+
+    for (const property of properties) {
+      try {
+        const response = await fetch('/api/reports/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            propertyId: property.id,
+            month: selectedMonth,
+            year: selectedYear,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          resultsArray.push({
+            property: property.property_name,
+            status: 'success',
+            url: data.url,
+          })
+        } else {
+          resultsArray.push({
+            property: property.property_name,
+            status: 'error',
+            error: data.error,
+          })
+        }
+      } catch (error) {
+        resultsArray.push({
+          property: property.property_name,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    }
+
+    setResults(resultsArray)
+    setGenerating(false)
+
+    // Reload reports list to show newly generated reports
+    await loadData()
+  }
+
+  function getMonthName(month: number): string {
+    return new Date(2024, month - 1).toLocaleString('default', { month: 'long' })
+  }
+
+  function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto py-8 max-w-6xl">
+      <h1 className="text-3xl font-bold mb-8">Owner Reports</h1>
+
+      {/* Generate Reports Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Generate New Reports</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium mb-2">Month</label>
+              <Select
+                value={String(selectedMonth)}
+                onValueChange={(v) => setSelectedMonth(Number(v))}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                    <SelectItem key={month} value={String(month)}>
+                      {getMonthName(month)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Year</label>
+              <Select
+                value={String(selectedYear)}
+                onValueChange={(v) => setSelectedYear(Number(v))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i).map(
+                    (year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={generateReports}
+              disabled={generating || properties.length === 0}
+              className="ml-auto"
+            >
+              {generating
+                ? 'Generating...'
+                : `Generate Reports (${properties.length} properties)`}
+            </Button>
+          </div>
+
+          {/* Generation Results */}
+          {results.length > 0 && (
+            <div className="mt-6 space-y-2">
+              <div className="text-sm font-medium">
+                Generation Results:{' '}
+                <span className="text-green-600">
+                  {results.filter((r) => r.status === 'success').length} succeeded
+                </span>
+                ,{' '}
+                <span className="text-red-600">
+                  {results.filter((r) => r.status === 'error').length} failed
+                </span>
+              </div>
+              {results.map((result, i) => (
+                <div
+                  key={i}
+                  className={`p-3 rounded border text-sm ${
+                    result.status === 'success'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  <div className="font-medium">{result.property}</div>
+                  {result.status === 'success' ? (
+                    
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                    >
+                      <Download size={14} />
+                      Download Report
+                    </a>
+                  ) : (
+                    <div className="text-red-600">{result.error}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Reports History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText size={20} />
+            Report History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reports.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No reports generated yet.</p>
+              <p className="text-sm">
+                Generate your first report using the form above.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Property</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Generated</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell className="font-medium">
+                        {report.property_name}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar size={14} className="text-gray-400" />
+                          {getMonthName(report.report_month)} {report.report_year}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {formatDate(report.generated_at)}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            report.status === 'generated'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {report.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(report.pdf_url, '_blank')}
+                          >
+                            <Eye size={14} className="mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                              const link = document.createElement('a')
+                              link.href = report.pdf_url
+                              link.download = `${report.property_name}-${report.report_month}-${report.report_year}.pdf`
+                              link.click()
+                            }}
+                          >
+                            <Download size={14} className="mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+FIX 2: ADD SHADCN TABLE COMPONENT (IF MISSING)
+File: components/ui/table.tsx
+If this file doesn't exist, create it:
+typescriptimport * as React from 'react'
+
+import { cn } from '@/lib/utils'
+
+const Table = React.forwardRef
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement>
+>(({ className, ...props }, ref) => (
+  <div className="relative w-full overflow-auto">
+    <table
+      ref={ref}
+      className={cn('w-full caption-bottom text-sm', className)}
+      {...props}
+    />
+  </div>
+))
+Table.displayName = 'Table'
+
+const TableHeader = React.forwardRef
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <thead ref={ref} className={cn('[&_tr]:border-b', className)} {...props} />
+))
+TableHeader.displayName = 'TableHeader'
+
+const TableBody = React.forwardRef
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <tbody
+    ref={ref}
+    className={cn('[&_tr:last-child]:border-0', className)}
+    {...props}
+  />
+))
+TableBody.displayName = 'TableBody'
+
+const TableFooter = React.forwardRef
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <tfoot
+    ref={ref}
+    className={cn(
+      'border-t bg-muted/50 font-medium [&>tr]:last:border-b-0',
+      className
+    )}
+    {...props}
+  />
+))
+TableFooter.displayName = 'TableFooter'
+
+const TableRow = React.forwardRef
+  HTMLTableRowElement,
+  React.HTMLAttributes<HTMLTableRowElement>
+>(({ className, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+      className
+    )}
+    {...props}
+  />
+))
+TableRow.displayName = 'TableRow'
+
+const TableHead = React.forwardRef
+  HTMLTableCellElement,
+  React.ThHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
+  <th
+    ref={ref}
+    className={cn(
+      'h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0',
+      className
+    )}
+    {...props}
+  />
+))
+TableHead.displayName = 'TableHead'
+
+const TableCell = React.forwardRef
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement>
+>(({ className, ...props }, ref) => (
+  <td
+    ref={ref}
+    className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+    {...props}
+  />
+))
+TableCell.displayName = 'TableCell'
+
+const TableCaption = React.forwardRef
+  HTMLTableCaptionElement,
+  React.HTMLAttributes<HTMLTableCaptionElement>
+>(({ className, ...props }, ref) => (
+  <caption
+    ref={ref}
+    className={cn('mt-4 text-sm text-muted-foreground', className)}
+    {...props}
+  />
+))
+TableCaption.displayName = 'TableCaption'
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+}
+
+FIX 3: ENSURE REPORTS ARE SAVED TO DATABASE
+File: lib/reports/generator.ts
+Verify the end of the generatePropertyReport function saves to database:
+typescript// ... (existing code for generating PDF)
+
+// Get public URL
+const { data: urlData } = supabase.storage
+  .from('reports')
+  .getPublicUrl(filename)
+
+const publicUrl = urlData.publicUrl
+
+// CRITICAL: Save report record to database so it appears in UI
+const { data: { user } } = await supabase.auth.getUser()
+
+if (user) {
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (customer) {
+    const { error: reportError } = await supabase.from('reports').insert({
+      customer_id: customer.id,
+      property_id: propertyId,
+      report_month: month,
+      report_year: year,
+      pdf_url: publicUrl,
+      storage_path: filename,
+      generated_at: new Date().toISOString(),
+      status: 'generated',
+    })
+
+    if (reportError) {
+      console.error('Failed to save report record:', reportError)
+      // Don't throw - PDF is already uploaded
+    }
+  }
+}
+
+return publicUrl
+
+FIX 4: ADD REPORTS TABLE TO DATABASE (IF MISSING)
+Run this SQL in Supabase SQL Editor:
+sql-- Check if reports table exists
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = 'reports'
+);
+
+-- If it doesn't exist (returns false), create it:
+CREATE TABLE IF NOT EXISTS reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  report_month INTEGER NOT NULL CHECK (report_month >= 1 AND report_month <= 12),
+  report_year INTEGER NOT NULL CHECK (report_year >= 2020),
+  pdf_url TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'generated',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(customer_id, property_id, report_month, report_year)
+);
+
+-- Add RLS policies
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own reports"
+ON reports FOR SELECT
+TO authenticated
+USING (
+  customer_id IN (
+    SELECT id FROM customers WHERE user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can insert own reports"
+ON reports FOR INSERT
+TO authenticated
+WITH CHECK (
+  customer_id IN (
+    SELECT id FROM customers WHERE user_id = auth.uid()
+  )
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_reports_customer_id ON reports(customer_id);
+CREATE INDEX IF NOT EXISTS idx_reports_property_id ON reports(property_id);
+CREATE INDEX IF NOT EXISTS idx_reports_date ON reports(report_year, report_month);
+
+TESTING CHECKLIST
+After Antigravity implements these changes:
+Step 1: Deploy
+bashgit add .
+git commit -m "Add report viewing and download functionality"
+git push
+```
+
+### Step 2: Create Reports Table (if needed)
+
+- [ ] Run SQL from Fix 4 in Supabase SQL Editor
+- [ ] Verify table created: Check Supabase → Table Editor → `reports` table exists
+
+### Step 3: Test Report Generation
+
+- [ ] Go to `/dashboard/reports`
+- [ ] Select month/year with data
+- [ ] Click "Generate Reports"
+- [ ] Wait for completion
+
+### Step 4: Verify Report History Shows
+
+- [ ] Scroll down to "Report History" section
+- [ ] See table with generated reports
+- [ ] Each row should show: Property, Period, Generated date, Status
+
+### Step 5: Test View Button
+
+- [ ] Click "View" button on a report
+- [ ] PDF should open in new browser tab
+- [ ] Verify PDF contains:
+  - [ ] Property name
+  - [ ] Month/year
+  - [ ] Income summary (with amounts)
+  - [ ] Expense summary (with amounts)
+  - [ ] NOI calculation
+  - [ ] Data matches CSV upload
+
+### Step 6: Test Download Button
+
+- [ ] Click "Download" button on a report
+- [ ] PDF should download to your computer
+- [ ] Filename format: `PropertyName-Month-Year.pdf`
+- [ ] Open downloaded file
+- [ ] Verify same data as Step 5
+
+---
+
+## WHAT YOU'LL SEE AFTER FIX
+
+### Before (Current State):
+```
+✅ Generated & Emailed
+
+[No way to access the PDF]
+```
+
+### After (Fixed State):
+```
+✅ Generated & Emailed
+
+REPORT HISTORY
+┌──────────────────┬──────────┬───────────────┬────────────────┐
+│ Property         │ Period   │ Generated     │ Actions        │
+├──────────────────┼──────────┼───────────────┼────────────────┤
+│ Sunset Apts      │ Jan 2025 │ Jan 30, 3:45pm│ [View] [Download] │
+│ Downtown Lofts   │ Jan 2025 │ Jan 30, 3:45pm│ [View] [Download] │
+└──────────────────┴──────────┴───────────────┴────────────────┘
+
+EXPECTED FUNCTIONALITY
+View Button:
+
+Opens PDF in new browser tab
+Shows full report
+Can print from browser
+
+Download Button:
+
+Downloads PDF to computer
+Saves with clean filename
+Can share with property owners
+
+Report History:
+
+Shows all generated reports
+Sorted by date (newest first)
+Filterable by property (future enhancement)
+
+
+CRITICAL NOTES:
+
+Reports table must exist - Run SQL from Fix 4 if it doesn't
+RLS policies required - Users should only see their own reports
+Public bucket required - PDFs must be publicly accessible for viewing
+Database + Storage sync - Report URL saved to database when generated
